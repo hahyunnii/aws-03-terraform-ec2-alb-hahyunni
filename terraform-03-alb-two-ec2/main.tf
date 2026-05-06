@@ -36,10 +36,9 @@ locals {
   # Keep stable instance keys so attachments and outputs are easy to read.
   instance_subnet_map = zipmap(["web-a", "web-b"], local.selected_subnet_ids)
 
-  # TODO(student): Create short ALB and target group names that stay within AWS limits.
-  # Hint: Start from "${var.name_prefix}-alb" and "${var.name_prefix}-tg", then trim with substr(..., 0, 32).
-  # alb_name          = substr("${var.name_prefix}-alb", 0, 32)
-  # target_group_name = substr("${var.name_prefix}-tg", 0, 32)
+  # Create short ALB and target group names that stay within AWS limits.
+  alb_name          = substr("${var.name_prefix}-alb", 0, 32)
+  target_group_name = substr("${var.name_prefix}-tg", 0, 32)
 
   common_tags = {
     Course  = "cloud-computing-aws"
@@ -54,12 +53,10 @@ resource "aws_security_group" "alb" {
 
   ingress {
     description = "Allow inbound HTTP from the internet to the ALB"
-    # TODO(student): Allow public HTTP traffic to the ALB.
-    # Hint: This rule should look like a standard public HTTP rule on port 80.
-    # from_port   = 80
-    # to_port     = 80
-    # protocol    = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -81,13 +78,11 @@ resource "aws_security_group" "ec2" {
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "Only the ALB security group may reach the application port"
-    # TODO(student): Allow only the ALB security group to reach the EC2 app port.
-    # Hint: Use var.app_port and reference aws_security_group.alb.id as the allowed source.
-    # from_port       = var.app_port
-    # to_port         = var.app_port
-    # protocol        = "tcp"
-    # security_groups = [aws_security_group.alb.id]
+    description     = "Only the ALB security group may reach the application port"
+    from_port       = var.app_port
+    to_port         = var.app_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -125,30 +120,24 @@ resource "aws_instance" "web" {
 }
 
 resource "aws_lb_target_group" "web" {
-  # TODO(student): Set the target group name and app port.
-  # Hint: Reuse the local short name and the application port variable.
-  # name        = local.target_group_name
-  # port        = var.app_port
+  name        = local.target_group_name
+  port        = var.app_port
   protocol    = "HTTP"
-  # TODO(student): Place the target group in the default VPC and use instance targets.
-  # Hint: The VPC is already available from the default VPC data source.
-  # vpc_id      = data.aws_vpc.default.id
-  # target_type = "instance"
+  vpc_id      = data.aws_vpc.default.id
+  target_type = "instance"
 
   # A basic health check keeps the example concrete and visible in the console.
-  # TODO(student): Recreate the health check block for HTTP "/" on the traffic port.
-  # Hint: Keep the check on path "/" with matcher "200" and port "traffic-port".
-  # health_check {
-  #   enabled             = true
-  #   healthy_threshold   = 2
-  #   unhealthy_threshold = 2
-  #   interval            = 15
-  #   timeout             = 5
-  #   protocol            = "HTTP"
-  #   path                = "/"
-  #   matcher             = "200"
-  #   port                = "traffic-port"
-  # }
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    interval            = 15
+    timeout             = 5
+    protocol            = "HTTP"
+    path                = "/"
+    matcher             = "200"
+    port                = "traffic-port"
+  }
 
   tags = merge(local.common_tags, {
     Name = local.target_group_name
@@ -159,23 +148,18 @@ resource "aws_lb_target_group_attachment" "web" {
   # Reuse the aws_instance.web map keys so each instance becomes one target attachment.
   for_each = aws_instance.web
 
-  # TODO(student): Attach each EC2 instance to the target group.
-  # Hint: Use the target group ARN and each.value.id.
-  # target_group_arn = aws_lb_target_group.web.arn
-  # target_id        = each.value.id
+  # Attach each EC2 instance to the target group.
+  target_group_arn = aws_lb_target_group.web.arn
+  target_id        = each.value.id
   port             = var.app_port
 }
 
 resource "aws_lb" "web" {
-  # TODO(student): Set the ALB name.
-  # Hint: Reuse the short name local, not the raw prefix string.
-  # name               = local.alb_name
+  name               = local.alb_name
   internal           = false
   load_balancer_type = "application"
-  # TODO(student): Attach the ALB security group and place the ALB in the selected subnets.
-  # Hint: One field expects a list of security group IDs and the other expects the subnet ID list.
-  # security_groups    = [aws_security_group.alb.id]
-  # subnets            = local.selected_subnet_ids
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = local.selected_subnet_ids
 
   tags = merge(local.common_tags, {
     Name = local.alb_name
@@ -183,16 +167,14 @@ resource "aws_lb" "web" {
 }
 
 resource "aws_lb_listener" "http" {
-  # TODO(student): Attach the listener to the ALB.
-  # Hint: The listener needs the ALB ARN, not the name.
-  # load_balancer_arn = aws_lb.web.arn
+  # Attach the listener to the ALB.
+  load_balancer_arn = aws_lb.web.arn
   port              = 80
   protocol          = "HTTP"
 
-  # TODO(student): Forward listener traffic to the target group.
-  # Hint: The default action type should be forward.
-  # default_action {
-  #   type             = "forward"
-  #   target_group_arn = aws_lb_target_group.web.arn
-  # }
+  # Forward listener traffic to the target group.
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
 }
