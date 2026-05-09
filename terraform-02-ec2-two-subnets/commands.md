@@ -1,12 +1,12 @@
-# 명령어 실행 로그
+# Commands Log
 
-## 사전 확인 (Preflight)
+## Preflight
 
 ```bash
 # AWS Academy 임시 크리덴셜이 환경 변수에 설정되어 있는지 확인합니다.
-test -n "$AWS_ACCESS_KEY_ID" && echo "AWS_ACCESS_KEY_ID 설정됨"
-test -n "$AWS_SECRET_ACCESS_KEY" && echo "AWS_SECRET_ACCESS_KEY 설정됨"
-test -n "$AWS_SESSION_TOKEN" && echo "AWS_SESSION_TOKEN 설정됨"
+test -n "$AWS_ACCESS_KEY_ID" && echo "AWS_ACCESS_KEY_ID is set"
+test -n "$AWS_SECRET_ACCESS_KEY" && echo "AWS_SECRET_ACCESS_KEY is set"
+test -n "$AWS_SESSION_TOKEN" && echo "AWS_SESSION_TOKEN is set"
 
 # 현재 셸에서 AWS 크리덴셜이 유효한지 확인합니다.
 aws sts get-caller-identity
@@ -15,11 +15,11 @@ aws sts get-caller-identity
 aws configure get region
 ```
 
-실제 출력:
+Key output:
 ```
-AWS_ACCESS_KEY_ID 설정됨
-AWS_SECRET_ACCESS_KEY 설정됨
-AWS_SESSION_TOKEN 설정됨
+AWS_ACCESS_KEY_ID is set
+AWS_SECRET_ACCESS_KEY is set
+AWS_SESSION_TOKEN is set
 {
     "UserId": "AROA6IXGDBDW3VDSMGKJG:user4886845=_________",
     "Account": "980808829165",
@@ -28,12 +28,12 @@ AWS_SESSION_TOKEN 설정됨
 us-east-1
 ```
 
-해석:
+Interpretation:
 AWS Academy 임시 크리덴셜이 환경변수에 정상 설정되어 있고, us-east-1 리전에서 voclabs 역할로 인증되었다.
 
 ---
 
-## 초기화 및 검증
+## Init and Validation
 
 ```bash
 # 작업 디렉토리를 초기화하고 AWS 프로바이더를 다운로드합니다.
@@ -46,7 +46,7 @@ terraform fmt
 terraform validate
 ```
 
-실제 출력:
+Key output:
 ```
 Initializing provider plugins...
 - Installing hashicorp/aws v5.100.0...
@@ -56,12 +56,12 @@ Terraform has been successfully initialized!
 Success! The configuration is valid.
 ```
 
-해석:
+Interpretation:
 AWS Provider v5.100.0이 설치되었고 구성 문법이 유효하다. `terraform fmt`는 포맷 변경이 없으면 아무 출력도 내지 않는다.
 
 ---
 
-## 플랜 저장
+## Saved Plan
 
 ```bash
 # 나중에 검토된 플랜을 그대로 적용할 수 있도록 실행 플랜을 파일에 저장합니다.
@@ -71,25 +71,23 @@ terraform plan -out plan.out
 terraform show plan.out
 ```
 
-실제 출력:
+Key output:
 ```
 Plan: 3 to add, 0 to change, 0 to destroy.
 
-  # aws_instance.web["web-a"]이 생성됩니다
+  # aws_instance.web["web-a"] will be created
   + resource "aws_instance" "web" {
       + instance_type = "t3.micro"
       + subnet_id     = "subnet-0b325a3a157bfff42"
-      ...
     }
 
-  # aws_instance.web["web-b"]이 생성됩니다
+  # aws_instance.web["web-b"] will be created
   + resource "aws_instance" "web" {
       + instance_type = "t3.micro"
       + subnet_id     = "subnet-0907c242196e43f14"
-      ...
     }
 
-  # aws_security_group.web이 생성됩니다
+  # aws_security_group.web will be created
 
 Changes to Outputs:
   + selected_availability_zones = ["us-east-1a", "us-east-1b"]
@@ -98,12 +96,12 @@ Changes to Outputs:
 Saved the plan to: plan.out
 ```
 
-해석:
+Interpretation:
 `for_each`가 `instance_subnet_map`을 순회하여 `web-a`와 `web-b` 두 인스턴스를 생성한다. 각각 `us-east-1a`와 `us-east-1b`의 서로 다른 서브넷에 배치된다. `-out plan.out`으로 저장된 플랜은 apply 시 재계산 없이 그대로 실행되어 검토한 내용과 동일한 변경이 보장된다.
 
 ---
 
-## 배포 및 출력 확인
+## Apply and Outputs
 
 ```bash
 # 새 플랜을 재계산하지 않고 저장된 플랜을 그대로 적용합니다.
@@ -113,7 +111,7 @@ terraform apply plan.out
 terraform output
 ```
 
-실제 출력:
+Key output:
 ```
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
@@ -134,8 +132,12 @@ selected_availability_zones = tolist(["us-east-1a", "us-east-1b"])
 selected_subnet_ids = ["subnet-0b325a3a157bfff42", "subnet-0907c242196e43f14"]
 ```
 
-해석:
-EC2 2개와 Security Group 1개가 성공적으로 생성되었다. `web-a`는 us-east-1a, `web-b`는 us-east-1b에 배치되어 서로 다른 AZ에 분산 배포가 확인되었다. 각 인스턴스에 curl로 접속한 결과 서로 다른 서버 이름(`web-a`, `web-b`)으로 응답하여 `for_each`와 `templatefile()`의 `server_name = each.key` 주입이 정상 동작함을 확인했다.
+Interpretation:
+EC2 2개와 Security Group 1개가 성공적으로 생성되었다. `web-a`는 us-east-1a, `web-b`는 us-east-1b에 배치되어 서로 다른 AZ에 분산 배포가 확인되었다. 각 인스턴스에 curl로 접속한 결과 서로 다른 서버 이름으로 응답했다.
+
+```bash
+curl "http://98.92.238.10" && echo "---" && curl "http://3.87.223.203"
+```
 
 ```
 <h1>Terraform Example 02</h1>
@@ -145,9 +147,11 @@ EC2 2개와 Security Group 1개가 성공적으로 생성되었다. `web-a`는 u
 <p>Server Name: web-b</p>   ← 3.87.223.203 응답
 ```
 
+`for_each`와 `templatefile()`의 `server_name = each.key` 주입이 정상 동작하여 두 인스턴스가 서로 다른 이름으로 응답함을 확인했다.
+
 ---
 
-## State 검사
+## State Inspection
 
 ```bash
 # Terraform이 현재 state 파일에서 추적 중인 모든 객체를 나열합니다.
@@ -157,16 +161,15 @@ terraform state list
 terraform console
 ```
 
-유용한 콘솔 표현식:
+Useful console expressions:
 ```text
 local.instance_subnet_map
 keys(aws_instance.web)
 values(aws_instance.web)[*].public_ip
 ```
 
-실제 출력:
+Key output:
 ```
-# terraform state list
 data.aws_ssm_parameter.al2023_ami
 data.aws_subnet.default_vpc["subnet-063f9ccf5facc7d21"]
 data.aws_subnet.default_vpc["subnet-0907c242196e43f14"]
@@ -181,19 +184,18 @@ aws_instance.web["web-b"]
 aws_security_group.web
 ```
 
-해석:
-`for_each`를 사용하면 리소스가 `aws_instance.web["web-a"]`, `aws_instance.web["web-b"]`처럼 키가 붙어 state에 독립적으로 저장된다. 과제 01의 단순 `aws_instance.web`과 달리 각 인스턴스를 개별적으로 수정하거나 삭제할 수 있다. `data.aws_subnet.default_vpc`도 6개 서브넷 각각이 키로 관리되는 것을 확인할 수 있다.
+Interpretation:
+`for_each`를 사용하면 리소스가 `aws_instance.web["web-a"]`, `aws_instance.web["web-b"]`처럼 키가 붙어 state에 독립적으로 저장된다. 과제 01의 단순 `aws_instance.web`과 달리 각 인스턴스를 개별적으로 수정하거나 삭제할 수 있다.
 
 ---
 
-## 리소스 삭제
+## Cleanup
 
 ```bash
-# 확인이 완료된 후 이 예제의 모든 리소스를 삭제합니다.
-terraform destroy
+terraform destroy -auto-approve
 ```
 
-실제 출력:
+Key output:
 ```
 aws_instance.web["web-a"]: Destroying... [id=i-00ecae2a36197d93f]
 aws_instance.web["web-b"]: Destroying... [id=i-073c7b6a7665ea08c]
@@ -205,14 +207,14 @@ aws_security_group.web: Destruction complete after 0s
 Destroy complete! Resources: 3 destroyed.
 ```
 
-해석:
+Interpretation:
 `web-a`와 `web-b` 두 인스턴스가 병렬로 동시에 삭제되었다. `for_each`로 생성된 리소스는 삭제 시에도 병렬 처리되어 단일 인스턴스보다 빠르게 완료된다. EC2가 모두 종료된 후 Security Group이 삭제되었다.
 
 ---
 
-## 크리덴셜 취급 주의사항
+## Credential Handling Note
 
 ```text
-AWS Academy 임시 크리덴셜은 환경 변수에만 저장하세요.
-AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN을 terraform.tfvars에 저장하지 마세요.
+Store AWS Academy temporary credentials in environment variables only.
+Do not put AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, or AWS_SESSION_TOKEN into terraform.tfvars.
 ```
