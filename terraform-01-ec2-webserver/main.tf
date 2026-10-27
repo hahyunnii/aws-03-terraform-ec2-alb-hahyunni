@@ -17,9 +17,8 @@ data "aws_ssm_parameter" "al2023_ami" {
 }
 
 locals {
-  # TODO(student): Pick the first subnet to keep the first example simple and deterministic.
-  # Hint: The data source already returns a list of subnet IDs. Sort it and take one element.
-  # selected_subnet_id = sort(data.aws_subnets.default_vpc.ids)[0]
+  # Pick the first subnet to keep the first example simple and deterministic.
+  selected_subnet_id = sort(data.aws_subnets.default_vpc.ids)[0]
 
   common_tags = {
     Course  = "cloud-computing-aws"
@@ -34,12 +33,10 @@ resource "aws_security_group" "web" {
 
   ingress {
     description = "Allow inbound HTTP from anywhere for a direct browser test"
-    # TODO(student): Allow inbound HTTP from the internet.
-    # Hint: Use port 80, protocol tcp, and the public CIDR block 0.0.0.0/0.
-    # from_port   = 80
-    # to_port     = 80
-    # protocol    = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -56,25 +53,21 @@ resource "aws_security_group" "web" {
 }
 
 resource "aws_instance" "web" {
-  # TODO(student): Use the Amazon Linux 2023 AMI from the SSM parameter.
-  # Hint: The AMI value is already available in data.aws_ssm_parameter.al2023_ami.value.
-  # ami = data.aws_ssm_parameter.al2023_ami.value
+  # Use the Amazon Linux 2023 AMI from the SSM parameter.
+  ami           = data.aws_ssm_parameter.al2023_ami.value
   instance_type = var.instance_type
 
-  # TODO(student): Place the instance in the selected subnet local value.
-  # Hint: Reuse the local value defined above instead of repeating the subnet lookup logic.
-  # subnet_id = local.selected_subnet_id
+  # Place the instance in the selected subnet local value.
+  subnet_id = local.selected_subnet_id
 
   # Keep the instance reachable from the internet for the first simple web-server example.
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.web.id]
 
-  # templatefile() lets Terraform inject variables into a shell script before EC2 boots.
-  # TODO(student): Render the bootstrap shell script with templatefile().
-  # Hint: The template path is user-data.sh and the only input variable here is name_prefix.
-  # user_data = templatefile("${path.module}/user-data.sh", {
-  #   name_prefix = var.name_prefix
-  # })
+  # Render the bootstrap shell script with templatefile().
+  user_data = templatefile("${path.module}/user-data.sh", {
+    name_prefix = var.name_prefix
+  })
 
   tags = merge(local.common_tags, {
     Name = "${var.name_prefix}-web"
